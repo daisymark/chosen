@@ -7496,11 +7496,7 @@ footer .thumb-md:hover {
 .btn-default {
   box-shadow: 0 1px 1px rgba(91, 91, 91, 0.1);
 }
-.navbar-user {
-  display: none;
-}
 .navbar {
-  padding-right: 20px;
   border: 0;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.05), 0 1px 0 rgba(0, 0, 0, 0.05);
 }

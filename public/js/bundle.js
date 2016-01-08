@@ -3768,7 +3768,7 @@ function getUserConfirmation(message, callback) {
 }
 
 /**
- * Returns true if the HTML5 history API is supported. Taken from Modernizr.
+ * Returns true if the HTML5 history API is supported. Taken from modernizr.
  *
  * https://github.com/Modernizr/Modernizr/blob/master/LICENSE
  * https://github.com/Modernizr/Modernizr/blob/master/feature-detects/history.js
@@ -3778,11 +3778,6 @@ function getUserConfirmation(message, callback) {
 function supportsHistory() {
   var ua = navigator.userAgent;
   if ((ua.indexOf('Android 2.') !== -1 || ua.indexOf('Android 4.0') !== -1) && ua.indexOf('Mobile Safari') !== -1 && ua.indexOf('Chrome') === -1 && ua.indexOf('Windows Phone') === -1) {
-    return false;
-  }
-  // FIXME: Work around our browser history not working correctly on Chrome
-  // iOS: https://github.com/rackt/react-router/issues/2565
-  if (ua.indexOf('CriOS') !== -1) {
     return false;
   }
   return window.history && 'pushState' in window.history;
@@ -3828,10 +3823,6 @@ var _createDOMHistory = require('./createDOMHistory');
 
 var _createDOMHistory2 = _interopRequireDefault(_createDOMHistory);
 
-var _parsePath = require('./parsePath');
-
-var _parsePath2 = _interopRequireDefault(_parsePath);
-
 /**
  * Creates and returns a history object that uses HTML5's history API
  * (pushState, replaceState, and the popstate event) to manage history.
@@ -3868,9 +3859,7 @@ function createBrowserHistory() {
       if (isSupported) window.history.replaceState(_extends({}, historyState, { key: key }), null, path);
     }
 
-    var location = _parsePath2['default'](path);
-
-    return history.createLocation(_extends({}, location, { state: state }), undefined, key);
+    return history.createLocation(path, state, undefined, key);
   }
 
   function startPopStateListener(_ref) {
@@ -3983,7 +3972,7 @@ function createBrowserHistory() {
 exports['default'] = createBrowserHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
-},{"./Actions":39,"./DOMStateStorage":41,"./DOMUtils":42,"./ExecutionEnvironment":43,"./createDOMHistory":45,"./parsePath":50,"_process":38,"invariant":55}],45:[function(require,module,exports){
+},{"./Actions":39,"./DOMStateStorage":41,"./DOMUtils":42,"./ExecutionEnvironment":43,"./createDOMHistory":45,"_process":38,"invariant":55}],45:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -4027,7 +4016,6 @@ exports['default'] = createDOMHistory;
 module.exports = exports['default'];
 }).call(this,require('_process'))
 },{"./DOMUtils":42,"./ExecutionEnvironment":43,"./createHistory":46,"_process":38,"invariant":55}],46:[function(require,module,exports){
-//import warning from 'warning'
 'use strict';
 
 exports.__esModule = true;
@@ -4051,10 +4039,6 @@ var _createLocation3 = _interopRequireDefault(_createLocation2);
 var _runTransitionHook = require('./runTransitionHook');
 
 var _runTransitionHook2 = _interopRequireDefault(_runTransitionHook);
-
-var _parsePath = require('./parsePath');
-
-var _parsePath2 = _interopRequireDefault(_parsePath);
 
 var _deprecate = require('./deprecate');
 
@@ -4176,10 +4160,15 @@ function createHistory() {
       if (ok) {
         // treat PUSH to current path like REPLACE to be consistent with browsers
         if (nextLocation.action === _Actions.PUSH) {
-          var prevPath = createPath(location);
-          var nextPath = createPath(nextLocation);
+          var _getCurrentLocation = getCurrentLocation();
 
-          if (nextPath === prevPath) nextLocation.action = _Actions.REPLACE;
+          var pathname = _getCurrentLocation.pathname;
+          var search = _getCurrentLocation.search;
+
+          var currentPath = pathname + search;
+          var path = nextLocation.pathname + nextLocation.search;
+
+          if (currentPath === path) nextLocation.action = _Actions.REPLACE;
         }
 
         if (finishTransition(nextLocation) !== false) updateLocation(nextLocation);
@@ -4192,12 +4181,20 @@ function createHistory() {
     });
   }
 
-  function push(location) {
-    transitionTo(createLocation(location, _Actions.PUSH, createKey()));
+  function pushState(state, path) {
+    transitionTo(createLocation(path, state, _Actions.PUSH, createKey()));
   }
 
-  function replace(location) {
-    transitionTo(createLocation(location, _Actions.REPLACE, createKey()));
+  function push(path) {
+    pushState(null, path);
+  }
+
+  function replaceState(state, path) {
+    transitionTo(createLocation(path, state, _Actions.REPLACE, createKey()));
+  }
+
+  function replace(path) {
+    replaceState(null, path);
   }
 
   function goBack() {
@@ -4212,12 +4209,12 @@ function createHistory() {
     return createRandomKey(keyLength);
   }
 
-  function createPath(location) {
-    if (location == null || typeof location === 'string') return location;
+  function createPath(path) {
+    if (path == null || typeof path === 'string') return path;
 
-    var pathname = location.pathname;
-    var search = location.search;
-    var hash = location.hash;
+    var pathname = path.pathname;
+    var search = path.search;
+    var hash = path.hash;
 
     var result = pathname;
 
@@ -4228,29 +4225,14 @@ function createHistory() {
     return result;
   }
 
-  function createHref(location) {
-    return createPath(location);
+  function createHref(path) {
+    return createPath(path);
   }
 
-  function createLocation(location, action) {
-    var key = arguments.length <= 2 || arguments[2] === undefined ? createKey() : arguments[2];
+  function createLocation(path, state, action) {
+    var key = arguments.length <= 3 || arguments[3] === undefined ? createKey() : arguments[3];
 
-    if (typeof action === 'object') {
-      //warning(
-      //  false,
-      //  'The state (2nd) argument to history.createLocation is deprecated; use a ' +
-      //  'location descriptor instead'
-      //)
-
-      if (typeof location === 'string') location = _parsePath2['default'](location);
-
-      location = _extends({}, location, { state: action });
-
-      action = key;
-      key = arguments[3] || createKey();
-    }
-
-    return _createLocation3['default'](location, action, key);
+    return _createLocation3['default'](path, state, action, key);
   }
 
   // deprecated
@@ -4280,24 +4262,12 @@ function createHistory() {
     });
   }
 
-  // deprecated
-  function pushState(state, path) {
-    if (typeof path === 'string') path = _parsePath2['default'](path);
-
-    push(_extends({ state: state }, path));
-  }
-
-  // deprecated
-  function replaceState(state, path) {
-    if (typeof path === 'string') path = _parsePath2['default'](path);
-
-    replace(_extends({ state: state }, path));
-  }
-
   return {
     listenBefore: listenBefore,
     listen: listen,
     transitionTo: transitionTo,
+    pushState: pushState,
+    replaceState: replaceState,
     push: push,
     replace: replace,
     go: go,
@@ -4310,21 +4280,16 @@ function createHistory() {
 
     setState: _deprecate2['default'](setState, 'setState is deprecated; use location.key to save state instead'),
     registerTransitionHook: _deprecate2['default'](registerTransitionHook, 'registerTransitionHook is deprecated; use listenBefore instead'),
-    unregisterTransitionHook: _deprecate2['default'](unregisterTransitionHook, 'unregisterTransitionHook is deprecated; use the callback returned from listenBefore instead'),
-    pushState: _deprecate2['default'](pushState, 'pushState is deprecated; use push instead'),
-    replaceState: _deprecate2['default'](replaceState, 'replaceState is deprecated; use replace instead')
+    unregisterTransitionHook: _deprecate2['default'](unregisterTransitionHook, 'unregisterTransitionHook is deprecated; use the callback returned from listenBefore instead')
   };
 }
 
 exports['default'] = createHistory;
 module.exports = exports['default'];
-},{"./Actions":39,"./AsyncUtils":40,"./createLocation":47,"./deprecate":48,"./parsePath":50,"./runTransitionHook":51,"deep-equal":52}],47:[function(require,module,exports){
-//import warning from 'warning'
+},{"./Actions":39,"./AsyncUtils":40,"./createLocation":47,"./deprecate":48,"./runTransitionHook":51,"deep-equal":52}],47:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
 
@@ -4335,31 +4300,16 @@ var _parsePath = require('./parsePath');
 var _parsePath2 = _interopRequireDefault(_parsePath);
 
 function createLocation() {
-  var location = arguments.length <= 0 || arguments[0] === undefined ? '/' : arguments[0];
-  var action = arguments.length <= 1 || arguments[1] === undefined ? _Actions.POP : arguments[1];
-  var key = arguments.length <= 2 || arguments[2] === undefined ? null : arguments[2];
+  var path = arguments.length <= 0 || arguments[0] === undefined ? '/' : arguments[0];
+  var state = arguments.length <= 1 || arguments[1] === undefined ? null : arguments[1];
+  var action = arguments.length <= 2 || arguments[2] === undefined ? _Actions.POP : arguments[2];
+  var key = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
 
-  var _fourthArg = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
+  if (typeof path === 'string') path = _parsePath2['default'](path);
 
-  if (typeof location === 'string') location = _parsePath2['default'](location);
-
-  if (typeof action === 'object') {
-    //warning(
-    //  false,
-    //  'The state (2nd) argument to createLocation is deprecated; use a ' +
-    //  'location descriptor instead'
-    //)
-
-    location = _extends({}, location, { state: action });
-
-    action = key || _Actions.POP;
-    key = _fourthArg;
-  }
-
-  var pathname = location.pathname || '/';
-  var search = location.search || '';
-  var hash = location.hash || '';
-  var state = location.state || null;
+  var pathname = path.pathname || '/';
+  var search = path.search || '';
+  var hash = path.hash || '';
 
   return {
     pathname: pathname,
@@ -4374,22 +4324,28 @@ function createLocation() {
 exports['default'] = createLocation;
 module.exports = exports['default'];
 },{"./Actions":39,"./parsePath":50}],48:[function(require,module,exports){
-//import warning from 'warning'
-
-"use strict";
+(function (process){
+'use strict';
 
 exports.__esModule = true;
-function deprecate(fn) {
-  return fn;
-  //return function () {
-  //  warning(false, '[history] ' + message)
-  //  return fn.apply(this, arguments)
-  //}
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+
+var _warning = require('warning');
+
+var _warning2 = _interopRequireDefault(_warning);
+
+function deprecate(fn, message) {
+  return function () {
+    process.env.NODE_ENV !== 'production' ? _warning2['default'](false, '[history] ' + message) : undefined;
+    return fn.apply(this, arguments);
+  };
 }
 
-exports["default"] = deprecate;
-module.exports = exports["default"];
-},{}],49:[function(require,module,exports){
+exports['default'] = deprecate;
+module.exports = exports['default'];
+}).call(this,require('_process'))
+},{"_process":38,"warning":56}],49:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
